@@ -96,7 +96,6 @@
         e.preventDefault();
         dataRecords = []; // Reset data records
 
-        // Get input values
         const inputs = {
             startX: parseFloat(document.getElementById('startX').value),
             startY: parseFloat(document.getElementById('startY').value),
@@ -129,9 +128,7 @@
                 inputs.theta3 * Math.PI / 180
             ];
             const endPoint = calculateFK(angles[0], angles[1], angles[2], inputs.L1, inputs.L2, inputs.L3);
-            const points = drawArm(inputs, angles, endPoint, true);
-            recordData(0, angles, points);
-            fillDataTable();
+            drawArmFK(inputs, angles, endPoint);
             showEndPoint(endPoint);
         } else {
             // Inverse Kinematics Mode
@@ -164,6 +161,94 @@
         const x3 = x2 + L3 * Math.cos(theta1 + theta2 + theta3);
         const y3 = y2 + L3 * Math.sin(theta1 + theta2 + theta3);
         return { x: x3, y: y3 };
+    }
+
+    // Draw Arm for Forward Kinematics
+    function drawArmFK(inputs, angles, endPoint) {
+        const canvas = document.getElementById('armCanvas');
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const scale = 40;
+        const offsetX = canvas.width / 2;
+        const offsetY = canvas.height - 50;
+
+        // Draw grid and axes
+        ctx.strokeStyle = '#ddd';
+        for (let i = -5; i <= 5; i++) {
+            ctx.beginPath();
+            ctx.moveTo(offsetX + i * scale, 0);
+            ctx.lineTo(offsetX + i * scale, canvas.height);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(0, offsetY - i * scale);
+            ctx.lineTo(canvas.width, offsetY - i * scale);
+            ctx.stroke();
+        }
+        ctx.strokeStyle = '#000';
+        ctx.beginPath();
+        ctx.moveTo(offsetX, 0);
+        ctx.lineTo(offsetX, canvas.height);
+        ctx.moveTo(0, offsetY);
+        ctx.lineTo(canvas.width, offsetY);
+        ctx.stroke();
+
+        const [theta1, theta2, theta3] = angles;
+        const x1 = inputs.L1 * Math.cos(theta1);
+        const y1 = inputs.L1 * Math.sin(theta1);
+        const x2 = x1 + inputs.L2 * Math.cos(theta1 + theta2);
+        const y2 = y1 + inputs.L2 * Math.sin(theta1 + theta2);
+        const x3 = x2 + inputs.L3 * Math.cos(theta1 + theta2 + theta3);
+        const y3 = y2 + inputs.L3 * Math.sin(theta1 + theta2 + theta3);
+
+        // Draw links
+        ctx.strokeStyle = 'blue';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(offsetX, offsetY);
+        ctx.lineTo(offsetX + x1 * scale, offsetY - y1 * scale);
+        ctx.stroke();
+
+        ctx.strokeStyle = 'green';
+        ctx.beginPath();
+        ctx.moveTo(offsetX + x1 * scale, offsetY - y1 * scale);
+        ctx.lineTo(offsetX + x2 * scale, offsetY - y2 * scale);
+        ctx.stroke();
+
+        ctx.strokeStyle = 'red';
+        ctx.beginPath();
+        ctx.moveTo(offsetX + x2 * scale, offsetY - y2 * scale);
+        ctx.lineTo(offsetX + x3 * scale, offsetY - y3 * scale);
+        ctx.stroke();
+
+        // Draw joints
+        ctx.fillStyle = '#00FF00'; // Base point
+        ctx.beginPath();
+        ctx.arc(offsetX, offsetY, 5, 0, 2 * Math.PI);
+        ctx.fill();
+
+        ctx.fillStyle = '#000'; // Intermediate joints
+        ctx.beginPath();
+        ctx.arc(offsetX + x1 * scale, offsetY - y1 * scale, 5, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(offsetX + x2 * scale, offsetY - y2 * scale, 5, 0, 2 * Math.PI);
+        ctx.fill();
+
+        // Draw end point (violet)
+        ctx.fillStyle = '#800080';
+        ctx.beginPath();
+        ctx.arc(offsetX + x3 * scale, offsetY - y3 * scale, 8, 0, 2 * Math.PI);
+        ctx.fill();
+
+        // Record data
+        dataRecords = [];
+        recordData(0, angles, [
+            { x: x1, y: y1 },
+            { x: x2, y: y2 },
+            { x: x3, y: y3 }
+        ]);
+        fillDataTable();
     }
 
     // Generate Path for Inverse Kinematics
@@ -208,15 +293,15 @@
 
         const angles = solutions[index];
         const endPoint = { x: inputs.endX, y: inputs.endY };
-        const points = drawArm(inputs, angles, endPoint, false);
+        const points = drawArmIK(inputs, angles, endPoint);
         recordData(index, angles, points);
         showAngles(angles);
 
         setTimeout(() => animateArm(inputs, solutions, index + 1), 100);
     }
 
-    // Draw Robotic Arm
-    function drawArm(inputs, angles, endPoint, isFKMode) {
+    // Draw Arm for Inverse Kinematics
+    function drawArmIK(inputs, angles, endPoint) {
         const canvas = document.getElementById('armCanvas');
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -287,12 +372,11 @@
         ctx.arc(offsetX + x2 * scale, offsetY - y2 * scale, 5, 0, 2 * Math.PI);
         ctx.fill();
 
-        if (!isFKMode) {
-            ctx.fillStyle = '#00FF00';
-            ctx.beginPath();
-            ctx.arc(offsetX + inputs.startX * scale, offsetY - inputs.startY * scale, 8, 0, 2 * Math.PI);
-            ctx.fill();
-        }
+        // Draw start and end points
+        ctx.fillStyle = '#00FF00';
+        ctx.beginPath();
+        ctx.arc(offsetX + inputs.startX * scale, offsetY - inputs.startY * scale, 8, 0, 2 * Math.PI);
+        ctx.fill();
 
         ctx.fillStyle = '#800080';
         ctx.beginPath();
