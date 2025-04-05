@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -41,11 +41,11 @@
             </div>
             <div id="angleInputs" style="display: none;">
                 <label for="theta1">θ₁ (°):</label>
-                <input type="number" id="theta1" step="0.1">
+                <input type="number" id="theta1" step="0.1" required>
                 <label for="theta2">θ₂ (°):</label>
-                <input type="number" id="theta2" step="0.1">
+                <input type="number" id="theta2" step="0.1" required>
                 <label for="theta3">θ₃ (°):</label>
-                <input type="number" id="theta3" step="0.1">
+                <input type="number" id="theta3" step="0.1" required>
             </div>
             <label for="L1">link 1 Length:</label>
             <input type="number" id="L1" step="0.1" min="0.1" required>
@@ -53,7 +53,7 @@
             <input type="number" id="L2" step="0.1" min="0.1" required>
             <label for="L3">link 3 Length:</label>
             <input type="number" id="L3" step="0.1" min="0.1" required>
-            <button type="submit">calculate angles</button>
+            <button type="submit">calculate</button>
         </form>
         <div id="result"></div>
         <div class="plot-container">
@@ -122,7 +122,10 @@
             endY: parseFloat(document.getElementById('endY').value),
             L1: parseFloat(document.getElementById('L1').value),
             L2: parseFloat(document.getElementById('L2').value),
-            L3: parseFloat(document.getElementById('L3').value)
+            L3: parseFloat(document.getElementById('L3').value),
+            theta1: parseFloat(document.getElementById('theta1').value),
+            theta2: parseFloat(document.getElementById('theta2').value),
+            theta3: parseFloat(document.getElementById('theta3').value)
         };
 
         if ([inputs.L1, inputs.L2, inputs.L3].some(isNaN) || [inputs.L1, inputs.L2, inputs.L3].some(v => v <= 0)) {
@@ -132,27 +135,26 @@
 
         if (checkbox.checked) {
             // الطور الثاني: Forward Kinematics
-            const theta1 = parseFloat(document.getElementById('theta1').value);
-            const theta2 = parseFloat(document.getElementById('theta2').value);
-            const theta3 = parseFloat(document.getElementById('theta3').value);
-
-            if (isNaN(theta1) || isNaN(theta2) || isNaN(theta3)) {
+            if (isNaN(inputs.theta1) || isNaN(inputs.theta2) || isNaN(inputs.theta3)) {
                 showError('please enter valid angles');
                 return;
             }
 
-            const theta1Rad = theta1 * Math.PI / 180;
-            const theta2Rad = theta2 * Math.PI / 180;
-            const theta3Rad = theta3 * Math.PI / 180;
+            const theta1Rad = inputs.theta1 * Math.PI / 180;
+            const theta2Rad = inputs.theta2 * Math.PI / 180;
+            const theta3Rad = inputs.theta3 * Math.PI / 180;
 
-            const endPoint = calculateFK(theta1Rad, theta2Rad, theta3Rad, inputs.L1, inputs.L2, inputs.L3);
-            const points = drawArm(inputs, [theta1Rad, theta2Rad, theta3Rad]);
-            recordData(0, [theta1Rad, theta2Rad, theta3Rad], points);
+            const angles = [theta1Rad, theta2Rad, theta3Rad];
+            const endPoint = calculateFK(angles[0], angles[1], angles[2], inputs.L1, inputs.L2, inputs.L3);
+            
+            // رسم الذراع وعرض النقطة النهائية
+            const points = drawArmFK(inputs, angles, endPoint);
+            recordData(0, angles, points);
             fillDataTable();
             showEndPoint(endPoint);
         } else {
             // الطور الأساسي: Inverse Kinematics
-            if (Object.values(inputs).some(isNaN)) {
+            if (Object.values(inputs).slice(0, 4).some(isNaN)) {
                 showError('please enter a valid input');
                 return;
             }
@@ -322,18 +324,117 @@
             ctx.fill();
         });
 
-        // start point(green) + end point (violet) - فقط في الطور الأساسي
-        if (!checkbox.checked) {
-            ctx.fillStyle = '#00FF00'; 
-            ctx.beginPath();
-            ctx.arc(offsetX + inputs.startX * scale, axisYBase - inputs.startY * scale, 8, 0, Math.PI * 2);
-            ctx.fill();
+        // start point(green) + end point (violet)
+        ctx.fillStyle = '#00FF00'; 
+        ctx.beginPath();
+        ctx.arc(offsetX + inputs.startX * scale, axisYBase - inputs.startY * scale, 8, 0, Math.PI * 2);
+        ctx.fill();
 
-            ctx.fillStyle = '#800080'; 
+        ctx.fillStyle = '#800080'; 
+        ctx.beginPath();
+        ctx.arc(offsetX + inputs.endX * scale, axisYBase - inputs.endY * scale, 8, 0, Math.PI * 2);
+        ctx.fill();
+
+        // s1, s2, s3 coordination points
+        return [
+            { x: (x1 - offsetX) / scale, y: (axisYBase - y1) / scale }, // s1
+            { x: (x2 - offsetX) / scale, y: (axisYBase - y2) / scale }, // s2
+            { x: (x3 - offsetX) / scale, y: (axisYBase - y3) / scale }  // s3
+        ];
+    }
+
+    // دالة رسم مخصصة للطور الثاني (Forward Kinematics)
+    function drawArmFK(inputs, angles, endPoint) {
+        const canvas = document.getElementById('armCanvas');
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const scale = 50;
+        const offsetX = 250;
+        const offsetY = 50;
+        const axisYBase = offsetY + 10 * scale;
+
+        // X&Y plan
+        ctx.strokeStyle = '#ddd';
+        ctx.lineWidth = 1;
+        for (let x = 0; x <= 10; x++) {
             ctx.beginPath();
-            ctx.arc(offsetX + inputs.endX * scale, axisYBase - inputs.endY * scale, 8, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.moveTo(offsetX + x * scale, offsetY);
+            ctx.lineTo(offsetX + x * scale, axisYBase);
+            ctx.stroke();
+            ctx.fillStyle = '#000';
+            ctx.fillText(x.toString(), offsetX + x * scale - 5, axisYBase + 20);
         }
+        for (let y = 0; y <= 10; y++) {
+            ctx.beginPath();
+            ctx.moveTo(offsetX, offsetY + y * scale);
+            ctx.lineTo(offsetX + 10 * scale, offsetY + y * scale);
+            ctx.stroke();
+            ctx.fillText((10 - y).toString(), offsetX - 30, offsetY + y * scale + 5);
+        }
+
+        // draw Axes
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(offsetX, axisYBase);
+        ctx.lineTo(offsetX + 10 * scale, axisYBase);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(offsetX, offsetY);
+        ctx.lineTo(offsetX, axisYBase);
+        ctx.stroke();
+
+        const baseX = offsetX;
+        const baseY = axisYBase;
+        const [theta1, theta2, theta3] = angles;
+
+        const x1 = baseX + inputs.L1 * scale * Math.cos(theta1);
+        const y1 = baseY - inputs.L1 * scale * Math.sin(theta1);
+        const x2 = x1 + inputs.L2 * scale * Math.cos(theta1 + theta2);
+        const y2 = y1 - inputs.L2 * scale * Math.sin(theta1 + theta2);
+        const x3 = x2 + inputs.L3 * scale * Math.cos(theta1 + theta2 + theta3);
+        const y3 = y2 - inputs.L3 * scale * Math.sin(theta1 + theta2 + theta3);
+
+        // draw links
+        ctx.beginPath();
+        ctx.moveTo(baseX, baseY);
+        ctx.lineTo(x1, y1);
+        ctx.strokeStyle = 'blue';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.strokeStyle = 'green';
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(x2, y2);
+        ctx.lineTo(x3, y3);
+        ctx.strokeStyle = 'red';
+        ctx.stroke();
+
+        // draw points
+        const joints = [
+            { x: baseX, y: baseY },
+            { x: x1, y: y1 },
+            { x: x2, y: y2 },
+            { x: x3, y: y3 }
+        ];
+        joints.forEach((joint, i) => {
+            ctx.fillStyle = i === 0 ? '#00FF00' : '#000';
+            ctx.beginPath();
+            ctx.arc(joint.x, joint.y, 5, 0, Math.PI * 2);
+            ctx.fill();
+        });
+
+        // رسم النقطة النهائية (violet)
+        ctx.fillStyle = '#800080';
+        ctx.beginPath();
+        ctx.arc(offsetX + endPoint.x * scale, axisYBase - endPoint.y * scale, 8, 0, Math.PI * 2);
+        ctx.fill();
 
         // s1, s2, s3 coordination points
         return [
@@ -391,7 +492,6 @@
         `;
     }
 
-    // دالة لعرض النقطة النهائية في الطور الثاني
     function showEndPoint(point) {
         document.getElementById('result').innerHTML = `
             <h3>End Point Coordinates:</h3>
