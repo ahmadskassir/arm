@@ -26,7 +26,7 @@
 <body>
 <div class="container">
     <div class="container2">
-        <h1>Inverse Kinematics Calculation</h1>
+        <h1>حساب حركيات الذراع الروبوتية</h1>
         <form id="ikForm">
             <input type="checkbox" id="modeCheckbox"> استخدام الزوايا لحساب النقطة النهائية<br><br>
             <div id="pointInputs">
@@ -47,37 +47,37 @@
                 <label for="theta3">θ₃ (°):</label>
                 <input type="number" id="theta3" step="0.1" required>
             </div>
-            <label for="L1">link 1 Length:</label>
+            <label for="L1">طول الرابط 1:</label>
             <input type="number" id="L1" step="0.1" min="0.1" required>
-            <label for="L2">link 2 Length:</label>
+            <label for="L2">طول الرابط 2:</label>
             <input type="number" id="L2" step="0.1" min="0.1" required>
-            <label for="L3">link 3 Length:</label>
+            <label for="L3">طول الرابط 3:</label>
             <input type="number" id="L3" step="0.1" min="0.1" required>
-            <button type="submit">calculate</button>
+            <button type="submit">احسب</button>
         </form>
         <div id="result"></div>
         <div class="plot-container">
-            <h2>arm simulator</h2>
+            <h2>محاكاة الذراع</h2>
             <canvas id="armCanvas" width="1000" height="750"></canvas>
         </div>
         <p> 
-            S1: The point at the end of link1<br>
-            S2: The point at the end of link2<br>
-            S3: The point at the end of link3<br>
-            small green dot: robot foundation (0,0)<br>
-            big green dot: start point<br>
-            violet dot: end point<br>
-            θ₁: angle between link1 & X_axes<br>
-            θ₂: angle between link1 & link2<br>
-            θ₃: angle between link2 & link3
+            S1: النقطة في نهاية الرابط 1<br>
+            S2: النقطة في نهاية الرابط 2<br>
+            S3: النقطة في نهاية الرابط 3<br>
+            النقطة الخضراء الصغيرة: أساس الروبوت (0,0)<br>
+            النقطة الخضراء الكبيرة: نقطة البداية<br>
+            النقطة البنفسجية: النقطة النهائية<br>
+            θ₁: الزاوية بين الرابط 1 ومحور X<br>
+            θ₂: الزاوية بين الرابط 1 والرابط 2<br>
+            θ₃: الزاوية بين الرابط 2 والرابط 3
         </p>
     </div>
     <div class="container2">
-        <h2>data table</h2>
+        <h2>جدول البيانات</h2>
         <table id="dataTable">
             <thead>
                 <tr>
-                    <th>step</th>
+                    <th>الخطوة</th>
                     <th>θ₁ (°)</th>
                     <th>θ₂ (°)</th>
                     <th>θ₃ (°)</th>
@@ -113,7 +113,7 @@
 
     document.getElementById('ikForm').addEventListener('submit', function(e) {
         e.preventDefault();
-        dataRecords = []; // reset
+        dataRecords = []; // إعادة تعيين السجلات
 
         const inputs = {
             startX: parseFloat(document.getElementById('startX').value),
@@ -128,15 +128,16 @@
             theta3: parseFloat(document.getElementById('theta3').value)
         };
 
+        // التحقق من أطوال الروابط
         if ([inputs.L1, inputs.L2, inputs.L3].some(isNaN) || [inputs.L1, inputs.L2, inputs.L3].some(v => v <= 0)) {
-            showError('The lengths of the links must be positive and valid');
+            showError('يجب أن تكون أطوال الروابط موجبة وصالحة');
             return;
         }
 
         if (checkbox.checked) {
             // الطور الثاني: Forward Kinematics
             if (isNaN(inputs.theta1) || isNaN(inputs.theta2) || isNaN(inputs.theta3)) {
-                showError('please enter valid angles');
+                showError('الرجاء إدخال زوايا صالحة');
                 return;
             }
 
@@ -146,20 +147,20 @@
 
             const angles = [theta1Rad, theta2Rad, theta3Rad];
             const endPoint = calculateFK(angles[0], angles[1], angles[2], inputs.L1, inputs.L2, inputs.L3);
-            
-            // رسم الذراع وعرض النقطة النهائية
+
+            // رسم الذراع وعرض النتيجة
             const points = drawArmFK(inputs, angles, endPoint);
             recordData(0, angles, points);
             fillDataTable();
             showEndPoint(endPoint);
         } else {
             // الطور الأساسي: Inverse Kinematics
-            if (Object.values(inputs).slice(0, 4).some(isNaN)) {
-                showError('please enter a valid input');
+            if ([inputs.startX, inputs.startY, inputs.endX, inputs.endY].some(isNaN)) {
+                showError('الرجاء إدخال إحداثيات صالحة');
                 return;
             }
             if ([inputs.startX, inputs.startY, inputs.endX, inputs.endY].some(v => v < 0 || v > 10)) {
-                showError('Coordinates must be between 0 and 10');
+                showError('يجب أن تكون الإحداثيات بين 0 و10');
                 return;
             }
 
@@ -168,7 +169,7 @@
             const reachableSolutions = solutions.filter(s => s !== null);
 
             if (reachableSolutions.length === 0) {
-                showError('Target position is unreachable');
+                showError('الموقع المستهدف غير قابل للوصول');
                 clearCanvas();
                 return;
             }
@@ -198,316 +199,4 @@
     function calculateIK(x, y, L1, L2, L3) {
         const distance = Math.sqrt(x * x + y * y);
         const totalLength = L1 + L2 + L3;
-        if (distance > totalLength || distance < Math.abs(L1 - L2 - L3)) {
-            return null;
-        }
-
-        const d = Math.sqrt(x * x + y * y);
-        const cosPhi = (d * d + L3 * L3 - L2 * L2) / (2 * d * L3);
-        const phi = Math.acos(Math.max(-1, Math.min(1, cosPhi)));
-        const thetaTarget = Math.atan2(y, x);
-
-        const x2 = x - L3 * Math.cos(thetaTarget);
-        const y2 = y - L3 * Math.sin(thetaTarget);
-
-        const r = Math.sqrt(x2 * x2 + y2 * y2);
-        const cosTheta2 = (r * r - L1 * L1 - L2 * L2) / (2 * L1 * L2);
-        const theta2 = Math.acos(Math.max(-1, Math.min(1, cosTheta2)));
-        const alpha = Math.atan2(y2, x2);
-        const beta = Math.asin(L2 * Math.sin(theta2) / r);
-        const theta1 = alpha - beta;
-
-        const theta3 = thetaTarget - (theta1 + theta2);
-
-        return [theta1, theta2, theta3];
-    }
-
-    function animateArm(inputs, solutions, index) {
-        if (index >= solutions.length) {
-            fillDataTable();
-            return;
-        }
-
-        const solution = solutions[index];
-        const points = drawArm(inputs, solution);
-        recordData(index, solution, points);
-        showAngles(solution);
-
-        setTimeout(() => {
-            requestAnimationFrame(() => animateArm(inputs, solutions, index + 1));
-        }, 50);
-    }
-
-    function drawArm(inputs, solution) {
-        const canvas = document.getElementById('armCanvas');
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        const scale = 50;
-        const offsetX = 250;
-        const offsetY = 50;
-        const axisYBase = offsetY + 10 * scale;
-
-        // X&Y plan
-        ctx.strokeStyle = '#ddd';
-        ctx.lineWidth = 1;
-        for (let x = 0; x <= 10; x++) {
-            ctx.beginPath();
-            ctx.moveTo(offsetX + x * scale, offsetY);
-            ctx.lineTo(offsetX + x * scale, axisYBase);
-            ctx.stroke();
-            ctx.fillStyle = '#000';
-            ctx.fillText(x.toString(), offsetX + x * scale - 5, axisYBase + 20);
-        }
-        for (let y = 0; y <= 10; y++) {
-            ctx.beginPath();
-            ctx.moveTo(offsetX, offsetY + y * scale);
-            ctx.lineTo(offsetX + 10 * scale, offsetY + y * scale);
-            ctx.stroke();
-            ctx.fillText((10 - y).toString(), offsetX - 30, offsetY + y * scale + 5);
-        }
-
-        // draw Axes
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(offsetX, axisYBase);
-        ctx.lineTo(offsetX + 10 * scale, axisYBase);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(offsetX, offsetY);
-        ctx.lineTo(offsetX, axisYBase);
-        ctx.stroke();
-
-        const baseX = offsetX;
-        const baseY = axisYBase;
-        const [theta1, theta2, theta3] = solution;
-
-        const x1 = baseX + inputs.L1 * scale * Math.cos(theta1);
-        const y1 = baseY - inputs.L1 * scale * Math.sin(theta1);
-        const x2 = x1 + inputs.L2 * scale * Math.cos(theta1 + theta2);
-        const y2 = y1 - inputs.L2 * scale * Math.sin(theta1 + theta2);
-        const x3 = x2 + inputs.L3 * scale * Math.cos(theta1 + theta2 + theta3);
-        const y3 = y2 - inputs.L3 * scale * Math.sin(theta1 + theta2 + theta3);
-
-        // draw links
-        ctx.beginPath();
-        ctx.moveTo(baseX, baseY);
-        ctx.lineTo(x1, y1);
-        ctx.strokeStyle = 'blue';
-        ctx.lineWidth = 3;
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
-        ctx.strokeStyle = 'green';
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.moveTo(x2, y2);
-        ctx.lineTo(x3, y3);
-        ctx.strokeStyle = 'red';
-        ctx.stroke();
-
-        // draw points
-        const joints = [
-            { x: baseX, y: baseY },
-            { x: x1, y: y1 },
-            { x: x2, y: y2 },
-            { x: x3, y: y3 }
-        ];
-        joints.forEach((joint, i) => {
-            ctx.fillStyle = i === 0 ? '#00FF00' : '#000';
-            ctx.beginPath();
-            ctx.arc(joint.x, joint.y, 5, 0, Math.PI * 2);
-            ctx.fill();
-        });
-
-        // start point(green) + end point (violet)
-        ctx.fillStyle = '#00FF00'; 
-        ctx.beginPath();
-        ctx.arc(offsetX + inputs.startX * scale, axisYBase - inputs.startY * scale, 8, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.fillStyle = '#800080'; 
-        ctx.beginPath();
-        ctx.arc(offsetX + inputs.endX * scale, axisYBase - inputs.endY * scale, 8, 0, Math.PI * 2);
-        ctx.fill();
-
-        // s1, s2, s3 coordination points
-        return [
-            { x: (x1 - offsetX) / scale, y: (axisYBase - y1) / scale }, // s1
-            { x: (x2 - offsetX) / scale, y: (axisYBase - y2) / scale }, // s2
-            { x: (x3 - offsetX) / scale, y: (axisYBase - y3) / scale }  // s3
-        ];
-    }
-
-    // دالة رسم مخصصة للطور الثاني (Forward Kinematics)
-    function drawArmFK(inputs, angles, endPoint) {
-        const canvas = document.getElementById('armCanvas');
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        const scale = 50;
-        const offsetX = 250;
-        const offsetY = 50;
-        const axisYBase = offsetY + 10 * scale;
-
-        // X&Y plan
-        ctx.strokeStyle = '#ddd';
-        ctx.lineWidth = 1;
-        for (let x = 0; x <= 10; x++) {
-            ctx.beginPath();
-            ctx.moveTo(offsetX + x * scale, offsetY);
-            ctx.lineTo(offsetX + x * scale, axisYBase);
-            ctx.stroke();
-            ctx.fillStyle = '#000';
-            ctx.fillText(x.toString(), offsetX + x * scale - 5, axisYBase + 20);
-        }
-        for (let y = 0; y <= 10; y++) {
-            ctx.beginPath();
-            ctx.moveTo(offsetX, offsetY + y * scale);
-            ctx.lineTo(offsetX + 10 * scale, offsetY + y * scale);
-            ctx.stroke();
-            ctx.fillText((10 - y).toString(), offsetX - 30, offsetY + y * scale + 5);
-        }
-
-        // draw Axes
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(offsetX, axisYBase);
-        ctx.lineTo(offsetX + 10 * scale, axisYBase);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(offsetX, offsetY);
-        ctx.lineTo(offsetX, axisYBase);
-        ctx.stroke();
-
-        const baseX = offsetX;
-        const baseY = axisYBase;
-        const [theta1, theta2, theta3] = angles;
-
-        const x1 = baseX + inputs.L1 * scale * Math.cos(theta1);
-        const y1 = baseY - inputs.L1 * scale * Math.sin(theta1);
-        const x2 = x1 + inputs.L2 * scale * Math.cos(theta1 + theta2);
-        const y2 = y1 - inputs.L2 * scale * Math.sin(theta1 + theta2);
-        const x3 = x2 + inputs.L3 * scale * Math.cos(theta1 + theta2 + theta3);
-        const y3 = y2 - inputs.L3 * scale * Math.sin(theta1 + theta2 + theta3);
-
-        // draw links
-        ctx.beginPath();
-        ctx.moveTo(baseX, baseY);
-        ctx.lineTo(x1, y1);
-        ctx.strokeStyle = 'blue';
-        ctx.lineWidth = 3;
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
-        ctx.strokeStyle = 'green';
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.moveTo(x2, y2);
-        ctx.lineTo(x3, y3);
-        ctx.strokeStyle = 'red';
-        ctx.stroke();
-
-        // draw points
-        const joints = [
-            { x: baseX, y: baseY },
-            { x: x1, y: y1 },
-            { x: x2, y: y2 },
-            { x: x3, y: y3 }
-        ];
-        joints.forEach((joint, i) => {
-            ctx.fillStyle = i === 0 ? '#00FF00' : '#000';
-            ctx.beginPath();
-            ctx.arc(joint.x, joint.y, 5, 0, Math.PI * 2);
-            ctx.fill();
-        });
-
-        // رسم النقطة النهائية (violet)
-        ctx.fillStyle = '#800080';
-        ctx.beginPath();
-        ctx.arc(offsetX + endPoint.x * scale, axisYBase - endPoint.y * scale, 8, 0, Math.PI * 2);
-        ctx.fill();
-
-        // s1, s2, s3 coordination points
-        return [
-            { x: (x1 - offsetX) / scale, y: (axisYBase - y1) / scale }, // s1
-            { x: (x2 - offsetX) / scale, y: (axisYBase - y2) / scale }, // s2
-            { x: (x3 - offsetX) / scale, y: (axisYBase - y3) / scale }  // s3
-        ];
-    }
-
-    function recordData(step, angles, points) {
-        const toDeg = rad => (rad * 180 / Math.PI).toFixed(2);
-        dataRecords.push({
-            step: step + 1,
-            theta1: toDeg(angles[0]),
-            theta2: toDeg(angles[1]),
-            theta3: toDeg(angles[2]),
-            s1X: points[0].x.toFixed(2),
-            s1Y: points[0].y.toFixed(2),
-            s2X: points[1].x.toFixed(2),
-            s2Y: points[1].y.toFixed(2),
-            s3X: points[2].x.toFixed(2),
-            s3Y: points[2].y.toFixed(2)
-        });
-    }
-
-    function fillDataTable() {
-        const tableBody = document.querySelector('#dataTable tbody');
-        tableBody.innerHTML = ''; // clear table
-
-        dataRecords.forEach(record => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${record.step}</td>
-                <td>${record.theta1}</td>
-                <td>${record.theta2}</td>
-                <td>${record.theta3}</td>
-                <td>${record.s1X}</td>
-                <td>${record.s1Y}</td>
-                <td>${record.s2X}</td>
-                <td>${record.s2Y}</td>
-                <td>${record.s3X}</td>
-                <td>${record.s3Y}</td>
-            `;
-            tableBody.appendChild(row);
-        });
-    }
-
-    function showAngles(solution) {
-        const toDeg = rad => (rad * 180 / Math.PI).toFixed(2);
-        document.getElementById('result').innerHTML = `
-            <h3>current angles:</h3>
-            <p>θ₁: ${toDeg(solution[0])}°</p>
-            <p>θ₂: ${toDeg(solution[1])}°</p>
-            <p>θ₃: ${toDeg(solution[2])}°</p>
-        `;
-    }
-
-    function showEndPoint(point) {
-        document.getElementById('result').innerHTML = `
-            <h3>End Point Coordinates:</h3>
-            <p>X: ${point.x.toFixed(2)}</p>
-            <p>Y: ${point.y.toFixed(2)}</p>
-        `;
-    }
-
-    function showError(msg) {
-        document.getElementById('result').innerHTML = `<p class="error">error: ${msg}</p>`;
-    }
-
-    function clearCanvas() {
-        const canvas = document.getElementById('armCanvas');
-        canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
-    }
-</script>
-</body>
-</html>
+        if (distance > totalLength || distance < Math.abs(L1 - L2 -
