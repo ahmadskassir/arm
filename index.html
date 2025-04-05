@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Robotic Arm</title>
+    <title>Robotic Arm Calculation</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f4; direction: rtl; }
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f4; direction: ltr; }
         .container { display: table; max-width: 2500px; margin: auto; padding: 20px; background-color: white; border-radius: 2px; }
         .container2 { display: table-cell; max-width: 1000px; padding: 20px; background-color: white; border-radius: 2px; }
         h1 { text-align: center; color: #333; }
@@ -26,9 +26,9 @@
 <body>
 <div class="container">
     <div class="container2">
-        <h1>حساب حركيات الذراع الروبوتية</h1>
+        <h1>Robotic Arm Calculation</h1>
         <form id="ikForm">
-            <input type="checkbox" id="modeCheckbox"> استخدام الزوايا لحساب النقطة النهائية<br><br>
+            <input type="checkbox" id="modeCheckbox"> Use angles to calculate end point<br><br>
             <div id="pointInputs">
                 <label for="startX">Start X (0-10):</label>
                 <input type="number" id="startX" step="0.1" min="0" max="10" required>
@@ -47,37 +47,37 @@
                 <label for="theta3">θ₃ (°):</label>
                 <input type="number" id="theta3" step="0.1" required>
             </div>
-            <label for="L1">طول الرابط 1:</label>
+            <label for="L1">Link 1 Length:</label>
             <input type="number" id="L1" step="0.1" min="0.1" required>
-            <label for="L2">طول الرابط 2:</label>
+            <label for="L2">Link 2 Length:</label>
             <input type="number" id="L2" step="0.1" min="0.1" required>
-            <label for="L3">طول الرابط 3:</label>
+            <label for="L3">Link 3 Length:</label>
             <input type="number" id="L3" step="0.1" min="0.1" required>
-            <button type="submit">احسب</button>
+            <button type="submit">Calculate</button>
         </form>
         <div id="result"></div>
         <div class="plot-container">
-            <h2>محاكاة الذراع</h2>
+            <h2>Arm Simulator</h2>
             <canvas id="armCanvas" width="1000" height="750"></canvas>
         </div>
-        <p> 
-            S1: النقطة في نهاية الرابط 1<br>
-            S2: النقطة في نهاية الرابط 2<br>
-            S3: النقطة في نهاية الرابط 3<br>
-            النقطة الخضراء الصغيرة: أساس الروبوت (0,0)<br>
-            النقطة الخضراء الكبيرة: نقطة البداية<br>
-            النقطة البنفسجية: النقطة النهائية<br>
-            θ₁: الزاوية بين الرابط 1 ومحور X<br>
-            θ₂: الزاوية بين الرابط 1 والرابط 2<br>
-            θ₃: الزاوية بين الرابط 2 والرابط 3
+        <p>
+            S1: The point at the end of link1<br>
+            S2: The point at the end of link2<br>
+            S3: The point at the end of link3<br>
+            Small green dot: Robot foundation (0,0)<br>
+            Big green dot: Start point<br>
+            Violet dot: End point<br>
+            θ₁: Angle between link1 and X-axis<br>
+            θ₂: Angle between link1 and link2<br>
+            θ₃: Angle between link2 and link3
         </p>
     </div>
     <div class="container2">
-        <h2>جدول البيانات</h2>
+        <h2>Data Table</h2>
         <table id="dataTable">
             <thead>
                 <tr>
-                    <th>الخطوة</th>
+                    <th>Step</th>
                     <th>θ₁ (°)</th>
                     <th>θ₂ (°)</th>
                     <th>θ₃ (°)</th>
@@ -100,7 +100,7 @@
     const angleInputs = document.getElementById('angleInputs');
     const pointInputs = document.getElementById('pointInputs');
 
-    // تبديل رؤية الحقول بناءً على حالة الـ checkbox
+    // Toggle visibility of input fields based on checkbox state
     checkbox.addEventListener('change', function() {
         if (this.checked) {
             angleInputs.style.display = 'block';
@@ -113,7 +113,7 @@
 
     document.getElementById('ikForm').addEventListener('submit', function(e) {
         e.preventDefault();
-        dataRecords = []; // إعادة تعيين السجلات
+        dataRecords = []; // Reset records
 
         const inputs = {
             startX: parseFloat(document.getElementById('startX').value),
@@ -128,16 +128,16 @@
             theta3: parseFloat(document.getElementById('theta3').value)
         };
 
-        // التحقق من أطوال الروابط
+        // Check link lengths
         if ([inputs.L1, inputs.L2, inputs.L3].some(isNaN) || [inputs.L1, inputs.L2, inputs.L3].some(v => v <= 0)) {
-            showError('يجب أن تكون أطوال الروابط موجبة وصالحة');
+            showError('Link lengths must be positive and valid');
             return;
         }
 
         if (checkbox.checked) {
-            // الطور الثاني: Forward Kinematics
+            // Mode 2: Forward Kinematics
             if (isNaN(inputs.theta1) || isNaN(inputs.theta2) || isNaN(inputs.theta3)) {
-                showError('الرجاء إدخال زوايا صالحة');
+                showError('Please enter valid angles');
                 return;
             }
 
@@ -148,19 +148,19 @@
             const angles = [theta1Rad, theta2Rad, theta3Rad];
             const endPoint = calculateFK(angles[0], angles[1], angles[2], inputs.L1, inputs.L2, inputs.L3);
 
-            // رسم الذراع وعرض النتيجة
+            // Draw arm and show result
             const points = drawArmFK(inputs, angles, endPoint);
             recordData(0, angles, points);
             fillDataTable();
             showEndPoint(endPoint);
         } else {
-            // الطور الأساسي: Inverse Kinematics
+            // Mode 1: Inverse Kinematics
             if ([inputs.startX, inputs.startY, inputs.endX, inputs.endY].some(isNaN)) {
-                showError('الرجاء إدخال إحداثيات صالحة');
+                showError('Please enter valid coordinates');
                 return;
             }
             if ([inputs.startX, inputs.startY, inputs.endX, inputs.endY].some(v => v < 0 || v > 10)) {
-                showError('يجب أن تكون الإحداثيات بين 0 و10');
+                showError('Coordinates must be between 0 and 10');
                 return;
             }
 
@@ -169,7 +169,7 @@
             const reachableSolutions = solutions.filter(s => s !== null);
 
             if (reachableSolutions.length === 0) {
-                showError('الموقع المستهدف غير قابل للوصول');
+                showError('Target position is unreachable');
                 clearCanvas();
                 return;
             }
@@ -178,7 +178,7 @@
         }
     });
 
-    // دالة لحساب النقطة النهائية باستخدام Forward Kinematics
+    // Function to calculate end point using Forward Kinematics
     function calculateFK(theta1, theta2, theta3, L1, L2, L3) {
         const x = L1 * Math.cos(theta1) + L2 * Math.cos(theta1 + theta2) + L3 * Math.cos(theta1 + theta2 + theta3);
         const y = L1 * Math.sin(theta1) + L2 * Math.sin(theta1 + theta2) + L3 * Math.sin(theta1 + theta2 + theta3);
@@ -249,7 +249,7 @@
         const offsetY = 50;
         const axisYBase = offsetY + 10 * scale;
 
-        // رسم المستوي X و Y
+        // Draw X and Y grid
         ctx.strokeStyle = '#ddd';
         ctx.lineWidth = 1;
         for (let x = 0; x <= 10; x++) {
@@ -268,7 +268,7 @@
             ctx.fillText((10 - y).toString(), offsetX - 30, offsetY + y * scale + 5);
         }
 
-        // رسم المحاور
+        // Draw axes
         ctx.strokeStyle = '#000';
         ctx.lineWidth = 2;
         ctx.beginPath();
@@ -291,7 +291,7 @@
         const x3 = x2 + inputs.L3 * scale * Math.cos(theta1 + theta2 + theta3);
         const y3 = y2 - inputs.L3 * scale * Math.sin(theta1 + theta2 + theta3);
 
-        // رسم الروابط
+        // Draw links
         ctx.beginPath();
         ctx.moveTo(baseX, baseY);
         ctx.lineTo(x1, y1);
@@ -311,7 +311,7 @@
         ctx.strokeStyle = 'red';
         ctx.stroke();
 
-        // رسم النقاط
+        // Draw joints
         const joints = [
             { x: baseX, y: baseY },
             { x: x1, y: y1 },
@@ -325,7 +325,7 @@
             ctx.fill();
         });
 
-        // رسم نقطة البداية (خضراء) ونقطة النهاية (بنفسجية)
+        // Draw start point (green) and end point (violet)
         ctx.fillStyle = '#00FF00';
         ctx.beginPath();
         ctx.arc(offsetX + inputs.startX * scale, axisYBase - inputs.startY * scale, 8, 0, Math.PI * 2);
@@ -336,7 +336,7 @@
         ctx.arc(offsetX + inputs.endX * scale, axisYBase - inputs.endY * scale, 8, 0, Math.PI * 2);
         ctx.fill();
 
-        // إرجاع إحداثيات النقاط s1, s2, s3
+        // Return points s1, s2, s3
         return [
             { x: (x1 - offsetX) / scale, y: (axisYBase - y1) / scale }, // s1
             { x: (x2 - offsetX) / scale, y: (axisYBase - y2) / scale }, // s2
@@ -344,7 +344,7 @@
         ];
     }
 
-    // دالة رسم الذراع للطور الثاني (Forward Kinematics)
+    // Function to draw arm for Forward Kinematics mode
     function drawArmFK(inputs, angles, endPoint) {
         const canvas = document.getElementById('armCanvas');
         const ctx = canvas.getContext('2d');
@@ -355,7 +355,7 @@
         const offsetY = 50;
         const axisYBase = offsetY + 10 * scale;
 
-        // رسم المستوي X و Y
+        // Draw X and Y grid
         ctx.strokeStyle = '#ddd';
         ctx.lineWidth = 1;
         for (let x = 0; x <= 10; x++) {
@@ -374,7 +374,7 @@
             ctx.fillText((10 - y).toString(), offsetX - 30, offsetY + y * scale + 5);
         }
 
-        // رسم المحاور
+        // Draw axes
         ctx.strokeStyle = '#000';
         ctx.lineWidth = 2;
         ctx.beginPath();
@@ -397,7 +397,7 @@
         const x3 = x2 + inputs.L3 * scale * Math.cos(theta1 + theta2 + theta3);
         const y3 = y2 - inputs.L3 * scale * Math.sin(theta1 + theta2 + theta3);
 
-        // رسم الروابط
+        // Draw links
         ctx.beginPath();
         ctx.moveTo(baseX, baseY);
         ctx.lineTo(x1, y1);
@@ -417,7 +417,7 @@
         ctx.strokeStyle = 'red';
         ctx.stroke();
 
-        // رسم النقاط
+        // Draw joints
         const joints = [
             { x: baseX, y: baseY },
             { x: x1, y: y1 },
@@ -431,13 +431,13 @@
             ctx.fill();
         });
 
-        // رسم النقطة النهائية (بنفسجية)
+        // Draw end point (violet)
         ctx.fillStyle = '#800080';
         ctx.beginPath();
         ctx.arc(offsetX + endPoint.x * scale, axisYBase - endPoint.y * scale, 8, 0, Math.PI * 2);
         ctx.fill();
 
-        // إرجاع إحداثيات النقاط s1, s2, s3
+        // Return points s1, s2, s3
         return [
             { x: (x1 - offsetX) / scale, y: (axisYBase - y1) / scale }, // s1
             { x: (x2 - offsetX) / scale, y: (axisYBase - y2) / scale }, // s2
@@ -463,7 +463,7 @@
 
     function fillDataTable() {
         const tableBody = document.querySelector('#dataTable tbody');
-        tableBody.innerHTML = ''; // مسح الجدول
+        tableBody.innerHTML = ''; // Clear table
 
         dataRecords.forEach(record => {
             const row = document.createElement('tr');
@@ -486,7 +486,7 @@
     function showAngles(solution) {
         const toDeg = rad => (rad * 180 / Math.PI).toFixed(2);
         document.getElementById('result').innerHTML = `
-            <h3>الزوايا الحالية:</h3>
+            <h3>Current Angles:</h3>
             <p>θ₁: ${toDeg(solution[0])}°</p>
             <p>θ₂: ${toDeg(solution[1])}°</p>
             <p>θ₃: ${toDeg(solution[2])}°</p>
@@ -495,14 +495,14 @@
 
     function showEndPoint(point) {
         document.getElementById('result').innerHTML = `
-            <h3>إحداثيات النقطة النهائية:</h3>
+            <h3>End Point Coordinates:</h3>
             <p>X: ${point.x.toFixed(2)}</p>
             <p>Y: ${point.y.toFixed(2)}</p>
         `;
     }
 
     function showError(msg) {
-        document.getElementById('result').innerHTML = `<p class="error">خطأ: ${msg}</p>`;
+        document.getElementById('result').innerHTML = `<p class="error">Error: ${msg}</p>`;
     }
 
     function clearCanvas() {
