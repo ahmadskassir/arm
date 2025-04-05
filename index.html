@@ -199,4 +199,316 @@
     function calculateIK(x, y, L1, L2, L3) {
         const distance = Math.sqrt(x * x + y * y);
         const totalLength = L1 + L2 + L3;
-        if (distance > totalLength || distance < Math.abs(L1 - L2 -
+        if (distance > totalLength || distance < Math.abs(L1 - L2 - L3)) {
+            return null;
+        }
+
+        const d = Math.sqrt(x * x + y * y);
+        const cosPhi = (d * d + L3 * L3 - L2 * L2) / (2 * d * L3);
+        const phi = Math.acos(Math.max(-1, Math.min(1, cosPhi)));
+        const thetaTarget = Math.atan2(y, x);
+
+        const x2 = x - L3 * Math.cos(thetaTarget);
+        const y2 = y - L3 * Math.sin(thetaTarget);
+
+        const r = Math.sqrt(x2 * x2 + y2 * y2);
+        const cosTheta2 = (r * r - L1 * L1 - L2 * L2) / (2 * L1 * L2);
+        const theta2 = Math.acos(Math.max(-1, Math.min(1, cosTheta2)));
+        const alpha = Math.atan2(y2, x2);
+        const beta = Math.asin(L2 * Math.sin(theta2) / r);
+        const theta1 = alpha - beta;
+
+        const theta3 = thetaTarget - (theta1 + theta2);
+
+        return [theta1, theta2, theta3];
+    }
+
+    function animateArm(inputs, solutions, index) {
+        if (index >= solutions.length) {
+            fillDataTable();
+            return;
+        }
+
+        const solution = solutions[index];
+        const points = drawArm(inputs, solution);
+        recordData(index, solution, points);
+        showAngles(solution);
+
+        setTimeout(() => {
+            requestAnimationFrame(() => animateArm(inputs, solutions, index + 1));
+        }, 50);
+    }
+
+    function drawArm(inputs, solution) {
+        const canvas = document.getElementById('armCanvas');
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const scale = 50;
+        const offsetX = 250;
+        const offsetY = 50;
+        const axisYBase = offsetY + 10 * scale;
+
+        // رسم المستوي X و Y
+        ctx.strokeStyle = '#ddd';
+        ctx.lineWidth = 1;
+        for (let x = 0; x <= 10; x++) {
+            ctx.beginPath();
+            ctx.moveTo(offsetX + x * scale, offsetY);
+            ctx.lineTo(offsetX + x * scale, axisYBase);
+            ctx.stroke();
+            ctx.fillStyle = '#000';
+            ctx.fillText(x.toString(), offsetX + x * scale - 5, axisYBase + 20);
+        }
+        for (let y = 0; y <= 10; y++) {
+            ctx.beginPath();
+            ctx.moveTo(offsetX, offsetY + y * scale);
+            ctx.lineTo(offsetX + 10 * scale, offsetY + y * scale);
+            ctx.stroke();
+            ctx.fillText((10 - y).toString(), offsetX - 30, offsetY + y * scale + 5);
+        }
+
+        // رسم المحاور
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(offsetX, axisYBase);
+        ctx.lineTo(offsetX + 10 * scale, axisYBase);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(offsetX, offsetY);
+        ctx.lineTo(offsetX, axisYBase);
+        ctx.stroke();
+
+        const baseX = offsetX;
+        const baseY = axisYBase;
+        const [theta1, theta2, theta3] = solution;
+
+        const x1 = baseX + inputs.L1 * scale * Math.cos(theta1);
+        const y1 = baseY - inputs.L1 * scale * Math.sin(theta1);
+        const x2 = x1 + inputs.L2 * scale * Math.cos(theta1 + theta2);
+        const y2 = y1 - inputs.L2 * scale * Math.sin(theta1 + theta2);
+        const x3 = x2 + inputs.L3 * scale * Math.cos(theta1 + theta2 + theta3);
+        const y3 = y2 - inputs.L3 * scale * Math.sin(theta1 + theta2 + theta3);
+
+        // رسم الروابط
+        ctx.beginPath();
+        ctx.moveTo(baseX, baseY);
+        ctx.lineTo(x1, y1);
+        ctx.strokeStyle = 'blue';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.strokeStyle = 'green';
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(x2, y2);
+        ctx.lineTo(x3, y3);
+        ctx.strokeStyle = 'red';
+        ctx.stroke();
+
+        // رسم النقاط
+        const joints = [
+            { x: baseX, y: baseY },
+            { x: x1, y: y1 },
+            { x: x2, y: y2 },
+            { x: x3, y: y3 }
+        ];
+        joints.forEach((joint, i) => {
+            ctx.fillStyle = i === 0 ? '#00FF00' : '#000';
+            ctx.beginPath();
+            ctx.arc(joint.x, joint.y, 5, 0, Math.PI * 2);
+            ctx.fill();
+        });
+
+        // رسم نقطة البداية (خضراء) ونقطة النهاية (بنفسجية)
+        ctx.fillStyle = '#00FF00';
+        ctx.beginPath();
+        ctx.arc(offsetX + inputs.startX * scale, axisYBase - inputs.startY * scale, 8, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#800080';
+        ctx.beginPath();
+        ctx.arc(offsetX + inputs.endX * scale, axisYBase - inputs.endY * scale, 8, 0, Math.PI * 2);
+        ctx.fill();
+
+        // إرجاع إحداثيات النقاط s1, s2, s3
+        return [
+            { x: (x1 - offsetX) / scale, y: (axisYBase - y1) / scale }, // s1
+            { x: (x2 - offsetX) / scale, y: (axisYBase - y2) / scale }, // s2
+            { x: (x3 - offsetX) / scale, y: (axisYBase - y3) / scale }  // s3
+        ];
+    }
+
+    // دالة رسم الذراع للطور الثاني (Forward Kinematics)
+    function drawArmFK(inputs, angles, endPoint) {
+        const canvas = document.getElementById('armCanvas');
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const scale = 50;
+        const offsetX = 250;
+        const offsetY = 50;
+        const axisYBase = offsetY + 10 * scale;
+
+        // رسم المستوي X و Y
+        ctx.strokeStyle = '#ddd';
+        ctx.lineWidth = 1;
+        for (let x = 0; x <= 10; x++) {
+            ctx.beginPath();
+            ctx.moveTo(offsetX + x * scale, offsetY);
+            ctx.lineTo(offsetX + x * scale, axisYBase);
+            ctx.stroke();
+            ctx.fillStyle = '#000';
+            ctx.fillText(x.toString(), offsetX + x * scale - 5, axisYBase + 20);
+        }
+        for (let y = 0; y <= 10; y++) {
+            ctx.beginPath();
+            ctx.moveTo(offsetX, offsetY + y * scale);
+            ctx.lineTo(offsetX + 10 * scale, offsetY + y * scale);
+            ctx.stroke();
+            ctx.fillText((10 - y).toString(), offsetX - 30, offsetY + y * scale + 5);
+        }
+
+        // رسم المحاور
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(offsetX, axisYBase);
+        ctx.lineTo(offsetX + 10 * scale, axisYBase);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(offsetX, offsetY);
+        ctx.lineTo(offsetX, axisYBase);
+        ctx.stroke();
+
+        const baseX = offsetX;
+        const baseY = axisYBase;
+        const [theta1, theta2, theta3] = angles;
+
+        const x1 = baseX + inputs.L1 * scale * Math.cos(theta1);
+        const y1 = baseY - inputs.L1 * scale * Math.sin(theta1);
+        const x2 = x1 + inputs.L2 * scale * Math.cos(theta1 + theta2);
+        const y2 = y1 - inputs.L2 * scale * Math.sin(theta1 + theta2);
+        const x3 = x2 + inputs.L3 * scale * Math.cos(theta1 + theta2 + theta3);
+        const y3 = y2 - inputs.L3 * scale * Math.sin(theta1 + theta2 + theta3);
+
+        // رسم الروابط
+        ctx.beginPath();
+        ctx.moveTo(baseX, baseY);
+        ctx.lineTo(x1, y1);
+        ctx.strokeStyle = 'blue';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.strokeStyle = 'green';
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(x2, y2);
+        ctx.lineTo(x3, y3);
+        ctx.strokeStyle = 'red';
+        ctx.stroke();
+
+        // رسم النقاط
+        const joints = [
+            { x: baseX, y: baseY },
+            { x: x1, y: y1 },
+            { x: x2, y: y2 },
+            { x: x3, y: y3 }
+        ];
+        joints.forEach((joint, i) => {
+            ctx.fillStyle = i === 0 ? '#00FF00' : '#000';
+            ctx.beginPath();
+            ctx.arc(joint.x, joint.y, 5, 0, Math.PI * 2);
+            ctx.fill();
+        });
+
+        // رسم النقطة النهائية (بنفسجية)
+        ctx.fillStyle = '#800080';
+        ctx.beginPath();
+        ctx.arc(offsetX + endPoint.x * scale, axisYBase - endPoint.y * scale, 8, 0, Math.PI * 2);
+        ctx.fill();
+
+        // إرجاع إحداثيات النقاط s1, s2, s3
+        return [
+            { x: (x1 - offsetX) / scale, y: (axisYBase - y1) / scale }, // s1
+            { x: (x2 - offsetX) / scale, y: (axisYBase - y2) / scale }, // s2
+            { x: (x3 - offsetX) / scale, y: (axisYBase - y3) / scale }  // s3
+        ];
+    }
+
+    function recordData(step, angles, points) {
+        const toDeg = rad => (rad * 180 / Math.PI).toFixed(2);
+        dataRecords.push({
+            step: step + 1,
+            theta1: toDeg(angles[0]),
+            theta2: toDeg(angles[1]),
+            theta3: toDeg(angles[2]),
+            s1X: points[0].x.toFixed(2),
+            s1Y: points[0].y.toFixed(2),
+            s2X: points[1].x.toFixed(2),
+            s2Y: points[1].y.toFixed(2),
+            s3X: points[2].x.toFixed(2),
+            s3Y: points[2].y.toFixed(2)
+        });
+    }
+
+    function fillDataTable() {
+        const tableBody = document.querySelector('#dataTable tbody');
+        tableBody.innerHTML = ''; // مسح الجدول
+
+        dataRecords.forEach(record => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${record.step}</td>
+                <td>${record.theta1}</td>
+                <td>${record.theta2}</td>
+                <td>${record.theta3}</td>
+                <td>${record.s1X}</td>
+                <td>${record.s1Y}</td>
+                <td>${record.s2X}</td>
+                <td>${record.s2Y}</td>
+                <td>${record.s3X}</td>
+                <td>${record.s3Y}</td>
+            `;
+            tableBody.appendChild(row);
+        });
+    }
+
+    function showAngles(solution) {
+        const toDeg = rad => (rad * 180 / Math.PI).toFixed(2);
+        document.getElementById('result').innerHTML = `
+            <h3>الزوايا الحالية:</h3>
+            <p>θ₁: ${toDeg(solution[0])}°</p>
+            <p>θ₂: ${toDeg(solution[1])}°</p>
+            <p>θ₃: ${toDeg(solution[2])}°</p>
+        `;
+    }
+
+    function showEndPoint(point) {
+        document.getElementById('result').innerHTML = `
+            <h3>إحداثيات النقطة النهائية:</h3>
+            <p>X: ${point.x.toFixed(2)}</p>
+            <p>Y: ${point.y.toFixed(2)}</p>
+        `;
+    }
+
+    function showError(msg) {
+        document.getElementById('result').innerHTML = `<p class="error">خطأ: ${msg}</p>`;
+    }
+
+    function clearCanvas() {
+        const canvas = document.getElementById('armCanvas');
+        canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+    }
+</script>
+</body>
+</html>
