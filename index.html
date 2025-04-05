@@ -3,21 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Robotic Arm Calculation</title>
+    <title>Robotic Arm Simulator</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f4; direction: ltr; }
-        .container { display: table; max-width: 2500px; margin: auto; padding: 20px; background-color: white; border-radius: 2px; }
-        .container2 { display: table-cell; max-width: 1000px; padding: 20px; background-color: white; border-radius: 2px; }
-        h1 { text-align: center; color: #333; }
-        h2 { text-align: center; color: #555; }
-        label { display: block; margin: 7px 0 5px; font-weight: bold; }
-        input { width: 100%; padding: 8px; margin-bottom: 7px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-        button { width: 100%; padding: 10px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+        .container { display: flex; max-width: 1200px; margin: auto; padding: 20px; background-color: white; border-radius: 5px; }
+        .left-panel { flex: 1; padding: 20px; }
+        .right-panel { flex: 1; padding: 20px; }
+        h1, h2 { text-align: center; color: #333; }
+        label { display: block; margin: 10px 0 5px; font-weight: bold; }
+        input { width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        button { width: 100%; padding: 10px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; }
         button:hover { background-color: #218838; }
         #result { margin-top: 15px; padding: 10px; border: 1px solid #ccc; border-radius: 4px; background-color: #f9f9f9; }
         .error { color: red; font-weight: bold; }
-        .plot-container { margin-top: 20px; text-align: center; }
-        canvas { border: 1px solid #ccc; border-radius: 4px; }
+        canvas { border: 1px solid #ccc; border-radius: 4px; width: 100%; max-width: 500px; height: 400px; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
         th { background-color: #f4f4f4; }
@@ -25,27 +24,27 @@
 </head>
 <body>
 <div class="container">
-    <div class="container2">
-        <h1>Robotic Arm Calculation</h1>
-        <form id="ikForm">
-            <input type="checkbox" id="modeCheckbox"> Use angles to calculate end point<br><br>
-            <div id="pointInputs">
+    <div class="left-panel">
+        <h1>Robotic Arm Simulator</h1>
+        <form id="armForm">
+            <input type="checkbox" id="modeCheckbox"> Use Angles (Forward Kinematics)<br><br>
+            <div id="pointInputs" style="display: block;">
                 <label for="startX">Start X (0-10):</label>
-                <input type="number" id="startX" step="0.1" min="0" max="10" required>
+                <input type="number" id="startX" step="0.1" min="0" max="10">
                 <label for="startY">Start Y (0-10):</label>
-                <input type="number" id="startY" step="0.1" min="0" max="10" required>
+                <input type="number" id="startY" step="0.1" min="0" max="10">
                 <label for="endX">End X (0-10):</label>
-                <input type="number" id="endX" step="0.1" min="0" max="10" required>
+                <input type="number" id="endX" step="0.1" min="0" max="10">
                 <label for="endY">End Y (0-10):</label>
-                <input type="number" id="endY" step="0.1" min="0" max="10" required>
+                <input type="number" id="endY" step="0.1" min="0" max="10">
             </div>
             <div id="angleInputs" style="display: none;">
                 <label for="theta1">θ₁ (°):</label>
-                <input type="number" id="theta1" step="0.1" required>
+                <input type="number" id="theta1" step="0.1">
                 <label for="theta2">θ₂ (°):</label>
-                <input type="number" id="theta2" step="0.1" required>
+                <input type="number" id="theta2" step="0.1">
                 <label for="theta3">θ₃ (°):</label>
-                <input type="number" id="theta3" step="0.1" required>
+                <input type="number" id="theta3" step="0.1">
             </div>
             <label for="L1">Link 1 Length:</label>
             <input type="number" id="L1" step="0.1" min="0.1" required>
@@ -56,23 +55,10 @@
             <button type="submit">Calculate</button>
         </form>
         <div id="result"></div>
-        <div class="plot-container">
-            <h2>Arm Simulator</h2>
-            <canvas id="armCanvas" width="1000" height="750"></canvas>
-        </div>
-        <p>
-            S1: The point at the end of link1<br>
-            S2: The point at the end of link2<br>
-            S3: The point at the end of link3<br>
-            Small green dot: Robot foundation (0,0)<br>
-            Big green dot: Start point<br>
-            Violet dot: End point<br>
-            θ₁: Angle between link1 and X-axis<br>
-            θ₂: Angle between link1 and link2<br>
-            θ₃: Angle between link2 and link3
-        </p>
     </div>
-    <div class="container2">
+    <div class="right-panel">
+        <h2>Arm Visualization</h2>
+        <canvas id="armCanvas"></canvas>
         <h2>Data Table</h2>
         <table id="dataTable">
             <thead>
@@ -100,21 +86,17 @@
     const angleInputs = document.getElementById('angleInputs');
     const pointInputs = document.getElementById('pointInputs');
 
-    // Toggle visibility of input fields based on checkbox state
+    // Toggle input fields based on checkbox
     checkbox.addEventListener('change', function() {
-        if (this.checked) {
-            angleInputs.style.display = 'block';
-            pointInputs.style.display = 'none';
-        } else {
-            angleInputs.style.display = 'none';
-            pointInputs.style.display = 'block';
-        }
+        angleInputs.style.display = this.checked ? 'block' : 'none';
+        pointInputs.style.display = this.checked ? 'none' : 'block';
     });
 
-    document.getElementById('ikForm').addEventListener('submit', function(e) {
+    document.getElementById('armForm').addEventListener('submit', function(e) {
         e.preventDefault();
-        dataRecords = []; // Reset records
+        dataRecords = []; // Reset data records
 
+        // Get input values
         const inputs = {
             startX: parseFloat(document.getElementById('startX').value),
             startY: parseFloat(document.getElementById('startY').value),
@@ -128,35 +110,33 @@
             theta3: parseFloat(document.getElementById('theta3').value)
         };
 
-        // Check link lengths
-        if ([inputs.L1, inputs.L2, inputs.L3].some(isNaN) || [inputs.L1, inputs.L2, inputs.L3].some(v => v <= 0)) {
-            showError('Link lengths must be positive and valid');
+        // Validate link lengths
+        if (!inputs.L1 || !inputs.L2 || !inputs.L3 || inputs.L1 <= 0 || inputs.L2 <= 0 || inputs.L3 <= 0) {
+            showError('Link lengths must be positive numbers');
             return;
         }
 
         if (checkbox.checked) {
-            // Mode 2: Forward Kinematics
+            // Forward Kinematics Mode
             if (isNaN(inputs.theta1) || isNaN(inputs.theta2) || isNaN(inputs.theta3)) {
-                showError('Please enter valid angles');
+                showError('Please enter valid angles for θ₁, θ₂, and θ₃');
                 return;
             }
 
-            const theta1Rad = inputs.theta1 * Math.PI / 180;
-            const theta2Rad = inputs.theta2 * Math.PI / 180;
-            const theta3Rad = inputs.theta3 * Math.PI / 180;
-
-            const angles = [theta1Rad, theta2Rad, theta3Rad];
+            const angles = [
+                inputs.theta1 * Math.PI / 180,
+                inputs.theta2 * Math.PI / 180,
+                inputs.theta3 * Math.PI / 180
+            ];
             const endPoint = calculateFK(angles[0], angles[1], angles[2], inputs.L1, inputs.L2, inputs.L3);
-
-            // Draw arm and show result
-            const points = drawArmFK(inputs, angles, endPoint);
+            const points = drawArm(inputs, angles, endPoint, true);
             recordData(0, angles, points);
             fillDataTable();
             showEndPoint(endPoint);
         } else {
-            // Mode 1: Inverse Kinematics
-            if ([inputs.startX, inputs.startY, inputs.endX, inputs.endY].some(isNaN)) {
-                showError('Please enter valid coordinates');
+            // Inverse Kinematics Mode
+            if (isNaN(inputs.startX) || isNaN(inputs.startY) || isNaN(inputs.endX) || isNaN(inputs.endY)) {
+                showError('Please enter valid coordinates for start and end points');
                 return;
             }
             if ([inputs.startX, inputs.startY, inputs.endX, inputs.endY].some(v => v < 0 || v > 10)) {
@@ -164,27 +144,29 @@
                 return;
             }
 
-            const path = generatePath(inputs.startX, inputs.startY, inputs.endX, inputs.endY, 50);
+            const path = generatePath(inputs.startX, inputs.startY, inputs.endX, inputs.endY, 20);
             const solutions = path.map(point => calculateIK(point.x, point.y, inputs.L1, inputs.L2, inputs.L3));
-            const reachableSolutions = solutions.filter(s => s !== null);
-
-            if (reachableSolutions.length === 0) {
-                showError('Target position is unreachable');
+            if (solutions.some(s => s === null)) {
+                showError('Some target positions are unreachable');
                 clearCanvas();
                 return;
             }
-
-            animateArm(inputs, reachableSolutions, 0);
+            animateArm(inputs, solutions, 0);
         }
     });
 
-    // Function to calculate end point using Forward Kinematics
+    // Forward Kinematics Calculation
     function calculateFK(theta1, theta2, theta3, L1, L2, L3) {
-        const x = L1 * Math.cos(theta1) + L2 * Math.cos(theta1 + theta2) + L3 * Math.cos(theta1 + theta2 + theta3);
-        const y = L1 * Math.sin(theta1) + L2 * Math.sin(theta1 + theta2) + L3 * Math.sin(theta1 + theta2 + theta3);
-        return { x, y };
+        const x1 = L1 * Math.cos(theta1);
+        const y1 = L1 * Math.sin(theta1);
+        const x2 = x1 + L2 * Math.cos(theta1 + theta2);
+        const y2 = y1 + L2 * Math.sin(theta1 + theta2);
+        const x3 = x2 + L3 * Math.cos(theta1 + theta2 + theta3);
+        const y3 = y2 + L3 * Math.sin(theta1 + theta2 + theta3);
+        return { x: x3, y: y3 };
     }
 
+    // Generate Path for Inverse Kinematics
     function generatePath(startX, startY, endX, endY, steps) {
         const path = [];
         for (let i = 0; i <= steps; i++) {
@@ -196,255 +178,135 @@
         return path;
     }
 
+    // Inverse Kinematics Calculation
     function calculateIK(x, y, L1, L2, L3) {
-        const distance = Math.sqrt(x * x + y * y);
-        const totalLength = L1 + L2 + L3;
-        if (distance > totalLength || distance < Math.abs(L1 - L2 - L3)) {
-            return null;
-        }
-
         const d = Math.sqrt(x * x + y * y);
-        const cosPhi = (d * d + L3 * L3 - L2 * L2) / (2 * d * L3);
-        const phi = Math.acos(Math.max(-1, Math.min(1, cosPhi)));
-        const thetaTarget = Math.atan2(y, x);
+        if (d > L1 + L2 + L3 || d < Math.abs(L1 - L2 - L3)) return null;
 
-        const x2 = x - L3 * Math.cos(thetaTarget);
-        const y2 = y - L3 * Math.sin(thetaTarget);
-
+        const x2 = x - L3 * Math.cos(Math.atan2(y, x));
+        const y2 = y - L3 * Math.sin(Math.atan2(y, x));
         const r = Math.sqrt(x2 * x2 + y2 * y2);
+
         const cosTheta2 = (r * r - L1 * L1 - L2 * L2) / (2 * L1 * L2);
-        const theta2 = Math.acos(Math.max(-1, Math.min(1, cosTheta2)));
+        if (cosTheta2 < -1 || cosTheta2 > 1) return null;
+        const theta2 = Math.acos(cosTheta2);
+
         const alpha = Math.atan2(y2, x2);
         const beta = Math.asin(L2 * Math.sin(theta2) / r);
         const theta1 = alpha - beta;
-
-        const theta3 = thetaTarget - (theta1 + theta2);
+        const theta3 = Math.atan2(y, x) - (theta1 + theta2);
 
         return [theta1, theta2, theta3];
     }
 
+    // Animate Arm for Inverse Kinematics
     function animateArm(inputs, solutions, index) {
         if (index >= solutions.length) {
             fillDataTable();
             return;
         }
 
-        const solution = solutions[index];
-        const points = drawArm(inputs, solution);
-        recordData(index, solution, points);
-        showAngles(solution);
+        const angles = solutions[index];
+        const endPoint = { x: inputs.endX, y: inputs.endY };
+        const points = drawArm(inputs, angles, endPoint, false);
+        recordData(index, angles, points);
+        showAngles(angles);
 
-        setTimeout(() => {
-            requestAnimationFrame(() => animateArm(inputs, solutions, index + 1));
-        }, 50);
+        setTimeout(() => animateArm(inputs, solutions, index + 1), 100);
     }
 
-    function drawArm(inputs, solution) {
+    // Draw Robotic Arm
+    function drawArm(inputs, angles, endPoint, isFKMode) {
         const canvas = document.getElementById('armCanvas');
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        const scale = 50;
-        const offsetX = 250;
-        const offsetY = 50;
-        const axisYBase = offsetY + 10 * scale;
+        const scale = 40;
+        const offsetX = canvas.width / 2;
+        const offsetY = canvas.height - 50;
 
-        // Draw X and Y grid
+        // Draw grid and axes
         ctx.strokeStyle = '#ddd';
-        ctx.lineWidth = 1;
-        for (let x = 0; x <= 10; x++) {
+        for (let i = -5; i <= 5; i++) {
             ctx.beginPath();
-            ctx.moveTo(offsetX + x * scale, offsetY);
-            ctx.lineTo(offsetX + x * scale, axisYBase);
+            ctx.moveTo(offsetX + i * scale, 0);
+            ctx.lineTo(offsetX + i * scale, canvas.height);
             ctx.stroke();
-            ctx.fillStyle = '#000';
-            ctx.fillText(x.toString(), offsetX + x * scale - 5, axisYBase + 20);
-        }
-        for (let y = 0; y <= 10; y++) {
             ctx.beginPath();
-            ctx.moveTo(offsetX, offsetY + y * scale);
-            ctx.lineTo(offsetX + 10 * scale, offsetY + y * scale);
+            ctx.moveTo(0, offsetY - i * scale);
+            ctx.lineTo(canvas.width, offsetY - i * scale);
             ctx.stroke();
-            ctx.fillText((10 - y).toString(), offsetX - 30, offsetY + y * scale + 5);
         }
-
-        // Draw axes
         ctx.strokeStyle = '#000';
-        ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.moveTo(offsetX, axisYBase);
-        ctx.lineTo(offsetX + 10 * scale, axisYBase);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(offsetX, offsetY);
-        ctx.lineTo(offsetX, axisYBase);
+        ctx.moveTo(offsetX, 0);
+        ctx.lineTo(offsetX, canvas.height);
+        ctx.moveTo(0, offsetY);
+        ctx.lineTo(canvas.width, offsetY);
         ctx.stroke();
 
-        const baseX = offsetX;
-        const baseY = axisYBase;
-        const [theta1, theta2, theta3] = solution;
-
-        const x1 = baseX + inputs.L1 * scale * Math.cos(theta1);
-        const y1 = baseY - inputs.L1 * scale * Math.sin(theta1);
-        const x2 = x1 + inputs.L2 * scale * Math.cos(theta1 + theta2);
-        const y2 = y1 - inputs.L2 * scale * Math.sin(theta1 + theta2);
-        const x3 = x2 + inputs.L3 * scale * Math.cos(theta1 + theta2 + theta3);
-        const y3 = y2 - inputs.L3 * scale * Math.sin(theta1 + theta2 + theta3);
+        const [theta1, theta2, theta3] = angles;
+        const x1 = inputs.L1 * Math.cos(theta1);
+        const y1 = inputs.L1 * Math.sin(theta1);
+        const x2 = x1 + inputs.L2 * Math.cos(theta1 + theta2);
+        const y2 = y1 + inputs.L2 * Math.sin(theta1 + theta2);
+        const x3 = x2 + inputs.L3 * Math.cos(theta1 + theta2 + theta3);
+        const y3 = y2 + inputs.L3 * Math.sin(theta1 + theta2 + theta3);
 
         // Draw links
-        ctx.beginPath();
-        ctx.moveTo(baseX, baseY);
-        ctx.lineTo(x1, y1);
         ctx.strokeStyle = 'blue';
         ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(offsetX, offsetY);
+        ctx.lineTo(offsetX + x1 * scale, offsetY - y1 * scale);
         ctx.stroke();
 
-        ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
         ctx.strokeStyle = 'green';
+        ctx.beginPath();
+        ctx.moveTo(offsetX + x1 * scale, offsetY - y1 * scale);
+        ctx.lineTo(offsetX + x2 * scale, offsetY - y2 * scale);
         ctx.stroke();
 
-        ctx.beginPath();
-        ctx.moveTo(x2, y2);
-        ctx.lineTo(x3, y3);
         ctx.strokeStyle = 'red';
+        ctx.beginPath();
+        ctx.moveTo(offsetX + x2 * scale, offsetY - y2 * scale);
+        ctx.lineTo(offsetX + x3 * scale, offsetY - y3 * scale);
         ctx.stroke();
 
         // Draw joints
-        const joints = [
-            { x: baseX, y: baseY },
-            { x: x1, y: y1 },
-            { x: x2, y: y2 },
-            { x: x3, y: y3 }
-        ];
-        joints.forEach((joint, i) => {
-            ctx.fillStyle = i === 0 ? '#00FF00' : '#000';
-            ctx.beginPath();
-            ctx.arc(joint.x, joint.y, 5, 0, Math.PI * 2);
-            ctx.fill();
-        });
-
-        // Draw start point (green) and end point (violet)
         ctx.fillStyle = '#00FF00';
         ctx.beginPath();
-        ctx.arc(offsetX + inputs.startX * scale, axisYBase - inputs.startY * scale, 8, 0, Math.PI * 2);
+        ctx.arc(offsetX, offsetY, 5, 0, 2 * Math.PI);
         ctx.fill();
+
+        ctx.fillStyle = '#000';
+        ctx.beginPath();
+        ctx.arc(offsetX + x1 * scale, offsetY - y1 * scale, 5, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(offsetX + x2 * scale, offsetY - y2 * scale, 5, 0, 2 * Math.PI);
+        ctx.fill();
+
+        if (!isFKMode) {
+            ctx.fillStyle = '#00FF00';
+            ctx.beginPath();
+            ctx.arc(offsetX + inputs.startX * scale, offsetY - inputs.startY * scale, 8, 0, 2 * Math.PI);
+            ctx.fill();
+        }
 
         ctx.fillStyle = '#800080';
         ctx.beginPath();
-        ctx.arc(offsetX + inputs.endX * scale, axisYBase - inputs.endY * scale, 8, 0, Math.PI * 2);
+        ctx.arc(offsetX + endPoint.x * scale, offsetY - endPoint.y * scale, 8, 0, 2 * Math.PI);
         ctx.fill();
 
-        // Return points s1, s2, s3
         return [
-            { x: (x1 - offsetX) / scale, y: (axisYBase - y1) / scale }, // s1
-            { x: (x2 - offsetX) / scale, y: (axisYBase - y2) / scale }, // s2
-            { x: (x3 - offsetX) / scale, y: (axisYBase - y3) / scale }  // s3
-        ];
-    }
-
-    // Function to draw arm for Forward Kinematics mode
-    function drawArmFK(inputs, angles, endPoint) {
-        const canvas = document.getElementById('armCanvas');
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        const scale = 50;
-        const offsetX = 250;
-        const offsetY = 50;
-        const axisYBase = offsetY + 10 * scale;
-
-        // Draw X and Y grid
-        ctx.strokeStyle = '#ddd';
-        ctx.lineWidth = 1;
-        for (let x = 0; x <= 10; x++) {
-            ctx.beginPath();
-            ctx.moveTo(offsetX + x * scale, offsetY);
-            ctx.lineTo(offsetX + x * scale, axisYBase);
-            ctx.stroke();
-            ctx.fillStyle = '#000';
-            ctx.fillText(x.toString(), offsetX + x * scale - 5, axisYBase + 20);
-        }
-        for (let y = 0; y <= 10; y++) {
-            ctx.beginPath();
-            ctx.moveTo(offsetX, offsetY + y * scale);
-            ctx.lineTo(offsetX + 10 * scale, offsetY + y * scale);
-            ctx.stroke();
-            ctx.fillText((10 - y).toString(), offsetX - 30, offsetY + y * scale + 5);
-        }
-
-        // Draw axes
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(offsetX, axisYBase);
-        ctx.lineTo(offsetX + 10 * scale, axisYBase);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(offsetX, offsetY);
-        ctx.lineTo(offsetX, axisYBase);
-        ctx.stroke();
-
-        const baseX = offsetX;
-        const baseY = axisYBase;
-        const [theta1, theta2, theta3] = angles;
-
-        const x1 = baseX + inputs.L1 * scale * Math.cos(theta1);
-        const y1 = baseY - inputs.L1 * scale * Math.sin(theta1);
-        const x2 = x1 + inputs.L2 * scale * Math.cos(theta1 + theta2);
-        const y2 = y1 - inputs.L2 * scale * Math.sin(theta1 + theta2);
-        const x3 = x2 + inputs.L3 * scale * Math.cos(theta1 + theta2 + theta3);
-        const y3 = y2 - inputs.L3 * scale * Math.sin(theta1 + theta2 + theta3);
-
-        // Draw links
-        ctx.beginPath();
-        ctx.moveTo(baseX, baseY);
-        ctx.lineTo(x1, y1);
-        ctx.strokeStyle = 'blue';
-        ctx.lineWidth = 3;
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
-        ctx.strokeStyle = 'green';
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.moveTo(x2, y2);
-        ctx.lineTo(x3, y3);
-        ctx.strokeStyle = 'red';
-        ctx.stroke();
-
-        // Draw joints
-        const joints = [
-            { x: baseX, y: baseY },
             { x: x1, y: y1 },
             { x: x2, y: y2 },
             { x: x3, y: y3 }
         ];
-        joints.forEach((joint, i) => {
-            ctx.fillStyle = i === 0 ? '#00FF00' : '#000';
-            ctx.beginPath();
-            ctx.arc(joint.x, joint.y, 5, 0, Math.PI * 2);
-            ctx.fill();
-        });
-
-        // Draw end point (violet)
-        ctx.fillStyle = '#800080';
-        ctx.beginPath();
-        ctx.arc(offsetX + endPoint.x * scale, axisYBase - endPoint.y * scale, 8, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Return points s1, s2, s3
-        return [
-            { x: (x1 - offsetX) / scale, y: (axisYBase - y1) / scale }, // s1
-            { x: (x2 - offsetX) / scale, y: (axisYBase - y2) / scale }, // s2
-            { x: (x3 - offsetX) / scale, y: (axisYBase - y3) / scale }  // s3
-        ];
     }
 
+    // Record Data for Table
     function recordData(step, angles, points) {
         const toDeg = rad => (rad * 180 / Math.PI).toFixed(2);
         dataRecords.push({
@@ -461,10 +323,10 @@
         });
     }
 
+    // Fill Data Table
     function fillDataTable() {
-        const tableBody = document.querySelector('#dataTable tbody');
-        tableBody.innerHTML = ''; // Clear table
-
+        const tbody = document.querySelector('#dataTable tbody');
+        tbody.innerHTML = '';
         dataRecords.forEach(record => {
             const row = document.createElement('tr');
             row.innerHTML = `
@@ -479,32 +341,36 @@
                 <td>${record.s3X}</td>
                 <td>${record.s3Y}</td>
             `;
-            tableBody.appendChild(row);
+            tbody.appendChild(row);
         });
     }
 
-    function showAngles(solution) {
+    // Show Angles for Inverse Kinematics
+    function showAngles(angles) {
         const toDeg = rad => (rad * 180 / Math.PI).toFixed(2);
         document.getElementById('result').innerHTML = `
             <h3>Current Angles:</h3>
-            <p>θ₁: ${toDeg(solution[0])}°</p>
-            <p>θ₂: ${toDeg(solution[1])}°</p>
-            <p>θ₃: ${toDeg(solution[2])}°</p>
+            <p>θ₁: ${toDeg(angles[0])}°</p>
+            <p>θ₂: ${toDeg(angles[1])}°</p>
+            <p>θ₃: ${toDeg(angles[2])}°</p>
         `;
     }
 
+    // Show End Point for Forward Kinematics
     function showEndPoint(point) {
         document.getElementById('result').innerHTML = `
-            <h3>End Point Coordinates:</h3>
+            <h3>End Point:</h3>
             <p>X: ${point.x.toFixed(2)}</p>
             <p>Y: ${point.y.toFixed(2)}</p>
         `;
     }
 
+    // Show Error Message
     function showError(msg) {
         document.getElementById('result').innerHTML = `<p class="error">Error: ${msg}</p>`;
     }
 
+    // Clear Canvas
     function clearCanvas() {
         const canvas = document.getElementById('armCanvas');
         canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
