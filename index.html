@@ -16,7 +16,7 @@
         button:hover { background-color: #218838; }
         #result { margin-top: 15px; padding: 10px; border: 1px solid #ccc; border-radius: 4px; background-color: #f9f9f9; }
         .error { color: red; font-weight: bold; }
-        canvas { border: 1px solid #ccc; border-radius: 4px; width: 100%; max-width: 800px; height: 600px; }
+        canvas { border: 1px solid #ccc; border-radius: 4px; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
         th { background-color: #f4f4f4; }
@@ -58,7 +58,7 @@
     </div>
     <div class="right-panel">
         <h2>Arm Visualization</h2>
-        <canvas id="armCanvas"></canvas>
+        <canvas id="armCanvas" width="1000" height="750"></canvas>
         <h2>Data Table</h2>
         <table id="dataTable">
             <thead>
@@ -169,31 +169,46 @@
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        const scale = 40;
-        const offsetX = canvas.width / 2;
-        const offsetY = canvas.height - 50;
+        const scale = 50;
+        const offsetX = 250;
+        const offsetY = 50;
+        const axisYBase = offsetY + 10 * scale; // 50 + 10*50 = 550
 
-        // Draw grid and axes
+        // Draw grid
         ctx.strokeStyle = '#ddd';
-        for (let i = -5; i <= 5; i++) {
+        ctx.lineWidth = 1;
+        for (let x = 0; x <= 10; x++) {
             ctx.beginPath();
-            ctx.moveTo(offsetX + i * scale, 0);
-            ctx.lineTo(offsetX + i * scale, canvas.height);
+            ctx.moveTo(offsetX + x * scale, offsetY);
+            ctx.lineTo(offsetX + x * scale, axisYBase);
             ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(0, offsetY - i * scale);
-            ctx.lineTo(canvas.width, offsetY - i * scale);
-            ctx.stroke();
+            ctx.fillStyle = '#000';
+            ctx.fillText(x.toString(), offsetX + x * scale - 5, axisYBase + 20);
         }
+        for (let y = 0; y <= 10; y++) {
+            ctx.beginPath();
+            ctx.moveTo(offsetX, offsetY + y * scale);
+            ctx.lineTo(offsetX + 10 * scale, offsetY + y * scale);
+            ctx.stroke();
+            ctx.fillText((10 - y).toString(), offsetX - 30, offsetY + y * scale + 5);
+        }
+
+        // Draw axes
         ctx.strokeStyle = '#000';
+        ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.moveTo(offsetX, 0);
-        ctx.lineTo(offsetX, canvas.height);
-        ctx.moveTo(0, offsetY);
-        ctx.lineTo(canvas.width, offsetY);
+        ctx.moveTo(offsetX, axisYBase);
+        ctx.lineTo(offsetX + 10 * scale, axisYBase);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(offsetX, offsetY);
+        ctx.lineTo(offsetX, axisYBase);
         ctx.stroke();
 
+        const baseX = offsetX;
+        const baseY = axisYBase;
         const [theta1, theta2, theta3] = angles;
+
         const x1 = inputs.L1 * Math.cos(theta1);
         const y1 = inputs.L1 * Math.sin(theta1);
         const x2 = x1 + inputs.L2 * Math.cos(theta1 + theta2);
@@ -205,40 +220,40 @@
         ctx.strokeStyle = 'blue';
         ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.moveTo(offsetX, offsetY);
-        ctx.lineTo(offsetX + x1 * scale, offsetY - y1 * scale);
+        ctx.moveTo(baseX, baseY);
+        ctx.lineTo(baseX + x1 * scale, baseY - y1 * scale);
         ctx.stroke();
 
         ctx.strokeStyle = 'green';
         ctx.beginPath();
-        ctx.moveTo(offsetX + x1 * scale, offsetY - y1 * scale);
-        ctx.lineTo(offsetX + x2 * scale, offsetY - y2 * scale);
+        ctx.moveTo(baseX + x1 * scale, baseY - y1 * scale);
+        ctx.lineTo(baseX + x2 * scale, baseY - y2 * scale);
         ctx.stroke();
 
         ctx.strokeStyle = 'red';
         ctx.beginPath();
-        ctx.moveTo(offsetX + x2 * scale, offsetY - y2 * scale);
-        ctx.lineTo(offsetX + x3 * scale, offsetY - y3 * scale);
+        ctx.moveTo(baseX + x2 * scale, baseY - y2 * scale);
+        ctx.lineTo(baseX + x3 * scale, baseY - y3 * scale);
         ctx.stroke();
 
         // Draw joints
         ctx.fillStyle = '#00FF00'; // Base point
         ctx.beginPath();
-        ctx.arc(offsetX, offsetY, 5, 0, 2 * Math.PI);
+        ctx.arc(baseX, baseY, 5, 0, 2 * Math.PI);
         ctx.fill();
 
         ctx.fillStyle = '#000'; // Intermediate joints
         ctx.beginPath();
-        ctx.arc(offsetX + x1 * scale, offsetY - y1 * scale, 5, 0, 2 * Math.PI);
+        ctx.arc(baseX + x1 * scale, baseY - y1 * scale, 5, 0, 2 * Math.PI);
         ctx.fill();
         ctx.beginPath();
-        ctx.arc(offsetX + x2 * scale, offsetY - y2 * scale, 5, 0, 2 * Math.PI);
+        ctx.arc(baseX + x2 * scale, baseY - y2 * scale, 5, 0, 2 * Math.PI);
         ctx.fill();
 
         // Draw end point (violet)
         ctx.fillStyle = '#800080';
         ctx.beginPath();
-        ctx.arc(offsetX + x3 * scale, offsetY - y3 * scale, 8, 0, 2 * Math.PI);
+        ctx.arc(baseX + x3 * scale, baseY - y3 * scale, 8, 0, 2 * Math.PI);
         ctx.fill();
 
         // Record data
@@ -292,8 +307,7 @@
         }
 
         const angles = solutions[index];
-        const endPoint = { x: inputs.endX, y: inputs.endY };
-        const points = drawArmIK(inputs, angles, endPoint);
+        const points = drawArmIK(inputs, angles);
         recordData(index, angles, points);
         showAngles(angles);
 
@@ -301,36 +315,51 @@
     }
 
     // Draw Arm for Inverse Kinematics
-    function drawArmIK(inputs, angles, endPoint) {
+    function drawArmIK(inputs, angles) {
         const canvas = document.getElementById('armCanvas');
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        const scale = 40;
-        const offsetX = canvas.width / 2;
-        const offsetY = canvas.height - 50;
+        const scale = 50;
+        const offsetX = 250;
+        const offsetY = 50;
+        const axisYBase = offsetY + 10 * scale;
 
-        // Draw grid and axes
+        // Draw grid
         ctx.strokeStyle = '#ddd';
-        for (let i = -5; i <= 5; i++) {
+        ctx.lineWidth = 1;
+        for (let x = 0; x <= 10; x++) {
             ctx.beginPath();
-            ctx.moveTo(offsetX + i * scale, 0);
-            ctx.lineTo(offsetX + i * scale, canvas.height);
+            ctx.moveTo(offsetX + x * scale, offsetY);
+            ctx.lineTo(offsetX + x * scale, axisYBase);
             ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(0, offsetY - i * scale);
-            ctx.lineTo(canvas.width, offsetY - i * scale);
-            ctx.stroke();
+            ctx.fillStyle = '#000';
+            ctx.fillText(x.toString(), offsetX + x * scale - 5, axisYBase + 20);
         }
+        for (let y = 0; y <= 10; y++) {
+            ctx.beginPath();
+            ctx.moveTo(offsetX, offsetY + y * scale);
+            ctx.lineTo(offsetX + 10 * scale, offsetY + y * scale);
+            ctx.stroke();
+            ctx.fillText((10 - y).toString(), offsetX - 30, offsetY + y * scale + 5);
+        }
+
+        // Draw axes
         ctx.strokeStyle = '#000';
+        ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.moveTo(offsetX, 0);
-        ctx.lineTo(offsetX, canvas.height);
-        ctx.moveTo(0, offsetY);
-        ctx.lineTo(canvas.width, offsetY);
+        ctx.moveTo(offsetX, axisYBase);
+        ctx.lineTo(offsetX + 10 * scale, axisYBase);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(offsetX, offsetY);
+        ctx.lineTo(offsetX, axisYBase);
         ctx.stroke();
 
+        const baseX = offsetX;
+        const baseY = axisYBase;
         const [theta1, theta2, theta3] = angles;
+
         const x1 = inputs.L1 * Math.cos(theta1);
         const y1 = inputs.L1 * Math.sin(theta1);
         const x2 = x1 + inputs.L2 * Math.cos(theta1 + theta2);
@@ -342,47 +371,48 @@
         ctx.strokeStyle = 'blue';
         ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.moveTo(offsetX, offsetY);
-        ctx.lineTo(offsetX + x1 * scale, offsetY - y1 * scale);
+        ctx.moveTo(baseX, baseY);
+        ctx.lineTo(baseX + x1 * scale, baseY - y1 * scale);
         ctx.stroke();
 
         ctx.strokeStyle = 'green';
         ctx.beginPath();
-        ctx.moveTo(offsetX + x1 * scale, offsetY - y1 * scale);
-        ctx.lineTo(offsetX + x2 * scale, offsetY - y2 * scale);
+        ctx.moveTo(baseX + x1 * scale, baseY - y1 * scale);
+        ctx.lineTo(baseX + x2 * scale, baseY - y2 * scale);
         ctx.stroke();
 
         ctx.strokeStyle = 'red';
         ctx.beginPath();
-        ctx.moveTo(offsetX + x2 * scale, offsetY - y2 * scale);
-        ctx.lineTo(offsetX + x3 * scale, offsetY - y3 * scale);
+        ctx.moveTo(baseX + x2 * scale, baseY - y2 * scale);
+        ctx.lineTo(baseX + x3 * scale, baseY - y3 * scale);
         ctx.stroke();
 
         // Draw joints
-        ctx.fillStyle = '#00FF00';
+        ctx.fillStyle = '#00FF00'; // Base point
         ctx.beginPath();
-        ctx.arc(offsetX, offsetY, 5, 0, 2 * Math.PI);
+        ctx.arc(baseX, baseY, 5, 0, 2 * Math.PI);
         ctx.fill();
 
-        ctx.fillStyle = '#000';
+        ctx.fillStyle = '#000'; // Intermediate joints
         ctx.beginPath();
-        ctx.arc(offsetX + x1 * scale, offsetY - y1 * scale, 5, 0, 2 * Math.PI);
+        ctx.arc(baseX + x1 * scale, baseY - y1 * scale, 5, 0, 2 * Math.PI);
         ctx.fill();
         ctx.beginPath();
-        ctx.arc(offsetX + x2 * scale, offsetY - y2 * scale, 5, 0, 2 * Math.PI);
+        ctx.arc(baseX + x2 * scale, baseY - y2 * scale, 5, 0, 2 * Math.PI);
         ctx.fill();
 
         // Draw start and end points
         ctx.fillStyle = '#00FF00';
         ctx.beginPath();
-        ctx.arc(offsetX + inputs.startX * scale, offsetY - inputs.startY * scale, 8, 0, 2 * Math.PI);
+        ctx.arc(offsetX + inputs.startX * scale, axisYBase - inputs.startY * scale, 8, 0, 2 * Math.PI);
         ctx.fill();
 
         ctx.fillStyle = '#800080';
         ctx.beginPath();
-        ctx.arc(offsetX + endPoint.x * scale, offsetY - endPoint.y * scale, 8, 0, 2 * Math.PI);
+        ctx.arc(offsetX + inputs.endX * scale, axisYBase - inputs.endY * scale, 8, 0, 2 * Math.PI);
         ctx.fill();
 
+        // Return points for data recording
         return [
             { x: x1, y: y1 },
             { x: x2, y: y2 },
