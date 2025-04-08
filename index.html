@@ -155,7 +155,7 @@
                 return;
             }
 
-            const path = generatePath(inputs.startX, inputs.startY, inputs.endX, inputs.endY, 20);
+            const path = generatePath(inputs.startX, inputs.startY, inputs.endX, inputs.endY, 49);
             const solutions = path.map(point => calculateIK(point.x, point.y, inputs.L1, inputs.L2, inputs.L3));
             if (solutions.some(s => s === null)) {
                 showError('Some target positions are unreachable');
@@ -262,6 +262,9 @@
         ctx.fill();
         ctx.beginPath();
         ctx.arc(baseX + x2 * scale, baseY - y2 * scale, 5, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(baseX + x3 * scale, baseY - y3 * scale, 5, 0, 2 * Math.PI);
         ctx.fill();
 
         // Draw end point (violet)
@@ -413,6 +416,9 @@
         ctx.fill();
         ctx.beginPath();
         ctx.arc(baseX + x2 * scale, baseY - y2 * scale, 5, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(baseX + x3 * scale, baseY - y3 * scale, 5, 0, 2 * Math.PI);
         ctx.fill();
 
         // Draw start and end points
