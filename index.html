@@ -192,12 +192,10 @@
         return { x: x3, y: y3 };
     }
 
-    // Draw Arm for Forward Kinematics
-    function drawArmFK(inputs, angles, endPoint) {
+    // Draw Grid and Axes
+    function drawGridAndAxes() {
         const canvas = document.getElementById('armCanvas');
         const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
         const scale = 50;
         const offsetX = 250;
         const offsetY = 50;
@@ -233,7 +231,19 @@
         ctx.moveTo(offsetX, offsetY);
         ctx.lineTo(offsetX, axisYBase);
         ctx.stroke();
+    }
 
+    // Draw Arm for Forward Kinematics
+    function drawArmFK(inputs, angles, endPoint) {
+        const canvas = document.getElementById('armCanvas');
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawGridAndAxes(); // Draw grid and axes
+
+        const scale = 50;
+        const offsetX = 250;
+        const offsetY = 50;
+        const axisYBase = offsetY + 10 * scale;
         const baseX = offsetX;
         const baseY = axisYBase;
         const [theta1, theta2, theta3] = angles;
@@ -351,43 +361,12 @@
         const canvas = document.getElementById('armCanvas');
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawGridAndAxes(); // Draw grid and axes
 
         const scale = 50;
         const offsetX = 250;
         const offsetY = 50;
         const axisYBase = offsetY + 10 * scale;
-
-        // Draw grid
-        ctx.strokeStyle = '#ddd';
-        ctx.lineWidth = 1;
-        for (let x = 0; x <= 10; x++) {
-            ctx.beginPath();
-            ctx.moveTo(offsetX + x * scale, offsetY);
-            ctx.lineTo(offsetX + x * scale, axisYBase);
-            ctx.stroke();
-            ctx.fillStyle = '#000';
-            ctx.fillText(x.toString(), offsetX + x * scale - 5, axisYBase + 20);
-        }
-        for (let y = 0; y <= 10; y++) {
-            ctx.beginPath();
-            ctx.moveTo(offsetX, offsetY + y * scale);
-            ctx.lineTo(offsetX + 10 * scale, offsetY + y * scale);
-            ctx.stroke();
-            ctx.fillText((10 - y).toString(), offsetX - 30, offsetY + y * scale + 5);
-        }
-
-        // Draw axes
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(offsetX, axisYBase);
-        ctx.lineTo(offsetX + 10 * scale, axisYBase);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(offsetX, offsetY);
-        ctx.lineTo(offsetX, axisYBase);
-        ctx.stroke();
-
         const baseX = offsetX;
         const baseY = axisYBase;
         const [theta1, theta2, theta3] = angles;
@@ -459,14 +438,15 @@
     function drawReach(L1, L2, L3) {
         const canvas = document.getElementById('armCanvas');
         const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawGridAndAxes(); // Draw grid and axes
+
         const scale = 50;
         const offsetX = 250;
         const offsetY = 50;
         const axisYBase = offsetY + 10 * scale;
-
         const baseX = offsetX;
         const baseY = axisYBase;
-
         const maxReach = L1 + L2 + L3;
 
         // Draw reach circle
@@ -548,7 +528,13 @@
     function clearCanvas() {
         const canvas = document.getElementById('armCanvas');
         canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+        drawGridAndAxes(); // Redraw grid and axes after clearing
     }
+
+    // Draw grid and axes on page load
+    window.onload = function() {
+        drawGridAndAxes();
+    };
 </script>
 </body>
 </html>
