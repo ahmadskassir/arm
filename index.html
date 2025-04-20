@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Robotic Arm Simulator</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f4; direction: rtl; }
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f4; direction: ltr; }
         .container { display: table; max-width: 2500px; margin: auto; padding: 20px; background-color: white; border-radius: 2px; }
         .container2 { display: table-cell; max-width: 1000px; padding: 20px; background-color: white; border-radius: 2px; }
         h1 { text-align: center; color: #333; }
@@ -54,6 +54,8 @@
             <label for="L3">Link 3 Length:</label>
             <input type="number" id="L3" step="0.1" min="0.1" required>
             <button type="submit">Calculate</button>
+            <br><br>
+            <button type="button" id="showReachBtn">Show Reach</button>
         </form>
         <div id="result"></div>
         <div class="plot-container">
@@ -64,12 +66,12 @@
             S1: The point at the end of link1<br>
             S2: The point at the end of link2<br>
             S3: The point at the end of link3<br>
-            small green dot: robot foundation (0,0)<br>
-            big green dot: start point<br>
-            violet dot: end point<br>
-            θ₁: angle between link1 & X_axes<br>
-            θ₂: angle between link1 & link2<br>
-            θ₃: angle between link2 & link3
+            Small green dot: Robot base (0,0)<br>
+            Large green dot: Start point<br>
+            Violet dot: End point<br>
+            θ₁: Angle between link1 and X-axis<br>
+            θ₂: Angle between link1 and link2<br>
+            θ₃: Angle between link2 and link3
         </p>
     </div>
     <div class="container2">
@@ -166,6 +168,19 @@
         }
     });
 
+    document.getElementById('showReachBtn').addEventListener('click', function() {
+        const L1 = parseFloat(document.getElementById('L1').value);
+        const L2 = parseFloat(document.getElementById('L2').value);
+        const L3 = parseFloat(document.getElementById('L3').value);
+
+        if (isNaN(L1) || isNaN(L2) || isNaN(L3) || L1 <= 0 || L2 <= 0 || L3 <= 0) {
+            showError('Please enter valid positive link lengths');
+            return;
+        }
+
+        drawReach(L1, L2, L3);
+    });
+
     // Forward Kinematics Calculation
     function calculateFK(theta1, theta2, theta3, L1, L2, L3) {
         const x1 = L1 * Math.cos(theta1);
@@ -186,7 +201,7 @@
         const scale = 50;
         const offsetX = 250;
         const offsetY = 50;
-        const axisYBase = offsetY + 10 * scale; // 50 + 10*50 = 550
+        const axisYBase = offsetY + 10 * scale;
 
         // Draw grid
         ctx.strokeStyle = '#ddd';
@@ -440,6 +455,30 @@
         ];
     }
 
+    // Draw Reach Area
+    function drawReach(L1, L2, L3) {
+        const canvas = document.getElementById('armCanvas');
+        const ctx = canvas.getContext('2d');
+        const scale = 50;
+        const offsetX = 250;
+        const offsetY = 50;
+        const axisYBase = offsetY + 10 * scale;
+
+        const baseX = offsetX;
+        const baseY = axisYBase;
+
+        const maxReach = L1 + L2 + L3;
+
+        // Draw reach circle
+        ctx.beginPath();
+        ctx.arc(baseX, baseY, maxReach * scale, 0, 2 * Math.PI);
+        ctx.fillStyle = 'rgba(255, 0, 0, 0.1)'; // Transparent red
+        ctx.fill();
+        ctx.strokeStyle = 'red';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+    }
+
     // Record Data for Table
     function recordData(step, angles, points) {
         const toDeg = rad => (rad * 180 / Math.PI).toFixed(2);
@@ -460,7 +499,7 @@
     // Fill Data Table
     function fillDataTable() {
         const tableBody = document.querySelector('#dataTable tbody');
-        tableBody.innerHTML = ''; // clear table
+        tableBody.innerHTML = ''; // Clear table
 
         dataRecords.forEach(record => {
             const row = document.createElement('tr');
